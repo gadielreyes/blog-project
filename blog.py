@@ -278,7 +278,7 @@ class BlogFront(BlogHandler):
     # A class that represent a RequestHandler for front page of the blog
 
     def get(self):
-        posts = greetings = Post.all().order('-created')
+        posts = Post.all().order('-created')
         self.render('front.html', posts = posts, pagetitle="Blog")
 
 class PostPage(BlogHandler):
@@ -286,7 +286,7 @@ class PostPage(BlogHandler):
 
     def get(self, post_id):
         post = get_post(post_id)
-        comments = greetings = db.GqlQuery("SELECT * FROM Comment "
+        comments = db.GqlQuery("SELECT * FROM Comment "
                                             "WHERE post_id = %s "
                                             "ORDER BY created DESC" % post_id)
 

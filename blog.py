@@ -24,9 +24,28 @@ def render_str(template, **params):
     return t.render(params)
 
 def make_secure_val(val):
+    """Make a given value more secure
+
+    Args:
+        val (str): the value to make secure
+
+    Returns:
+        string: value|hash of the value
+    """
+
     return '%s|%s' % (val, hmac.new(secret, val).hexdigest())
 
 def check_secure_val(secure_val):
+    """Check if the secure val has not been changed
+
+    Args:
+        secure_val (str): a secure value
+
+    Returns:
+        string: The return value. the value if it's secure.
+        None otherwise.
+    """
+
     val = secure_val.split('|')[0]
     if secure_val == make_secure_val(val):
         return val
@@ -67,10 +86,6 @@ class BlogHandler(webapp2.RequestHandler):
         uid = self.read_secure_cookie('user_id')
         self.user = uid and User.by_id(int(uid))
 
-def render_post(response, post):
-    response.out.write('<b>' + post.subject + '</b><br>')
-    response.out.write(post.content)
-
 class MainPage(BlogHandler):
     """A class that represent a RequestHandler
     of the main page of the project.
@@ -81,15 +96,47 @@ class MainPage(BlogHandler):
 
 ##### user stuff
 def make_salt(length = 5):
+    """Make a random string with a given length
+
+    Args:
+        length (int): length of the string
+
+    Returns:
+        string: a string of concatenating the random letters
+    """
+
     return ''.join(random.choice(letters) for x in xrange(length))
 
 def make_pw_hash(name, pw, salt = None):
+    """Make a password secure
+
+    Args:
+        name (str): the name of the user
+        pw (str): the password of the user
+        salt (str): the random letters of the hash if created
+
+    Returns:
+        string: hash,salt is the format returned
+    """
+
     if not salt:
         salt = make_salt()
     h = hashlib.sha256(name + pw + salt).hexdigest()
     return '%s,%s' % (salt, h)
 
 def valid_pw(name, password, h):
+    """Check is a password is valid
+
+    Args:
+        name (str): name of the user
+        password (str): password of the user
+        h (str): password hashed with the salt
+
+    Results:
+        bool: The return value. True if valid password.
+        False otherwise.
+    """
+
     salt = h.split(',')[0]
     return h == make_pw_hash(name, password, salt)
 

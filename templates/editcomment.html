@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
 {% block content %}
-  <h2>edit comment</h2>
+    <h2>edit comment</h2>
 
     <form method="post">
-      <label>
-        <div>blog</div>
-        <textarea name="content">{{content}}</textarea>
-      </label>
+        <label>
+            <div>blog</div>
+            <textarea name="content">{{content}}</textarea>
+        </label>
 
-      <div class="error">{{error}}</div>
+        <div class="error">{{error}}</div>
 
-      {% if user.is_comment_owner(id) %}
-        <a class="button-cancel" href="/blog/{{post_id}}">cancel</a>
-        <input type="submit">
-      {% endif %}
+        {% if user.is_comment_owner(id) %}
+            <a class="button-cancel" href="/blog/{{post_id}}">cancel</a>
+            <input type="submit">
+        {% endif %}
     </form>
 {% endblock %}

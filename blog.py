@@ -13,8 +13,9 @@ from google.appengine.ext import db
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 static_dir = os.path.join(os.path.dirname(__file__), 'static')
-jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader([template_dir, static_dir]),
-                               autoescape = True)
+jinja_env = jinja2.Environment(
+    loader = jinja2.FileSystemLoader([template_dir, static_dir]),
+    autoescape = True)
 
 secret = 'S0m3S3cr3tM3ss4g31h0p3n0B0dyC4nSp0t'
 
@@ -31,6 +32,10 @@ def check_secure_val(secure_val):
         return val
 
 class BlogHandler(webapp2.RequestHandler):
+    """A that represent a RequestHandler class with common functions
+    to be used in all pages
+    """
+
     def write(self, *a, **kw):
         self.response.out.write(*a, **kw)
 
@@ -67,7 +72,11 @@ def render_post(response, post):
     response.out.write(post.content)
 
 class MainPage(BlogHandler):
-  def get(self):
+    """A class that represent a RequestHandler
+    of the main page of the project.
+    """
+
+    def get(self):
       self.write('Hello, Udacity!')
 
 ##### user stuff
@@ -87,19 +96,9 @@ def valid_pw(name, password, h):
 def users_key(group = 'default'):
     return db.Key.from_path('users', group)
 
-def get_post(post_id):
-    key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-    post = db.get(key)
-    if post:
-        return post
-
-def get_comment(comment_id):
-    key = db.Key.from_path('Comment', int(comment_id), parent=blog_key())
-    comment = db.get(key)
-    if comment:
-        return comment
-
 class User(db.Model):
+    # A class that represent a User model in app engine datastore
+
     name = db.StringProperty(required = True)
     pw_hash = db.StringProperty(required = True)
     email = db.StringProperty()
@@ -128,21 +127,71 @@ class User(db.Model):
             return u
 
     def is_post_owner(self, post_id):
+        """Verify if the current user is the owner of a given post id
+
+        Args:
+            post_id (int): id of the post
+
+        Returns:
+            bool: The return value. True for being the owner of the post,
+            None otherwise.
+        """
         post = get_post(post_id)
         if post.owner_id == self.key().id():
             return True
 
     def is_comment_owner(self, comment_id):
+        """Verify if the current user is the owner of a given comment id
+
+        Args:
+            comment_id (int): id of the comment
+
+        Returns:
+            bool: The return value. True for being the owner of the comment,
+            None otherwise.
+        """
         comment = get_comment(comment_id)
         if comment.owner_id == self.key().id():
             return True
 
 
 ##### blog stuff
+def get_post(post_id):
+    """Get a post for a given id
+
+    Args:
+        post_id (int): id of the post
+
+    Returns:
+        Object: The return value. the post founded, None otherwise.
+    """
+
+    key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+    post = db.get(key)
+    if post:
+        return post
+
+def get_comment(comment_id):
+    """Get a comment for a given id
+
+    Args:
+        comment_id (int): id of the comment
+
+    Returns:
+        Object: The return value. the comment founded, None otherwise.
+    """
+
+    key = db.Key.from_path('Comment', int(comment_id), parent=blog_key())
+    comment = db.get(key)
+    if comment:
+        return comment
+
 def blog_key(name = 'default'):
     return db.Key.from_path('blogs', name)
 
 class Post(db.Model):
+    # A class representing a Post model in app engine datastore
+
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
     owner_id = db.IntegerProperty()
@@ -157,6 +206,8 @@ class Post(db.Model):
             return 0
 
 class Comment(db.Model):
+    # A class representing a Comment model in app engine datastore
+
     post_id = db.IntegerProperty(required = True)
     owner_id = db.IntegerProperty(required = True)
     content = db.TextProperty(required = True)
@@ -170,25 +221,36 @@ class Comment(db.Model):
             return u.name
 
 class Like(db.Model):
+    # A class representing a Like model in app engine datastore
+
     post_id = db.IntegerProperty(required = True)
     user_id = db.IntegerProperty(required = True)
     liked_on = db.DateTimeProperty(auto_now_add = True)
 
 class BlogFront(BlogHandler):
+    # A class that represent a RequestHandler for front page of the blog
+
     def get(self):
         posts = greetings = Post.all().order('-created')
         self.render('front.html', posts = posts, pagetitle="Blog")
 
 class PostPage(BlogHandler):
+    # A class that represent a RequestHandler for a single post
+
     def get(self, post_id):
         post = get_post(post_id)
-        comments = greetings = db.GqlQuery("SELECT * FROM Comment WHERE post_id = %s ORDER BY created DESC" % post_id)
+        comments = greetings = db.GqlQuery("SELECT * FROM Comment "
+                                            "WHERE post_id = %s "
+                                            "ORDER BY created DESC" % post_id)
 
         if not post:
             self.error(404)
             return
 
-        self.render("permalink.html", post = post, comments = comments, pagetitle="Post Page")
+        self.render("permalink.html",
+                    post = post,
+                    comments = comments,
+                    pagetitle = "Post Page")
 
     def post(self, post_id):
         content = self.request.get('content')
@@ -196,13 +258,18 @@ class PostPage(BlogHandler):
         post = get_post(post_id)
 
         if content and post_id:
-            c = Comment(parent = blog_key(), post_id = int(post_id), owner_id = self.user.key().id(), content = content)
+            c = Comment(parent = blog_key(),
+                        post_id = int(post_id),
+                        owner_id = self.user.key().id(),
+                        content = content)
             c.put()
             self.redirect('/blog/%s' % str(post_id))
         else:
             self.render("permalink.html", post = post)
 
 class NewPost(BlogHandler):
+    # A class that represent a RequestHandler for a new post page
+
     def get(self):
         if self.user:
             self.render("newpost.html", pagetitle="New Post")
@@ -218,14 +285,22 @@ class NewPost(BlogHandler):
         user_id = self.user.key().id()
 
         if subject and content and user_id:
-            p = Post(parent = blog_key(), subject = subject, content = content, owner_id = user_id)
+            p = Post(parent = blog_key(),
+                    subject = subject,
+                    content = content,
+                    owner_id = user_id)
             p.put()
             self.redirect('/blog/%s' % str(p.key().id()))
         else:
             error = "subject and content, please!"
-            self.render("newpost.html", subject=subject, content=content, error=error)
+            self.render("newpost.html",
+                        subject = subject,
+                        content = content,
+                        error = error)
 
 class EditPost(BlogHandler):
+    # A class that represent a RequestHandler for a edit post page
+
     def get(self, post_id):
         post = get_post(post_id)
 
@@ -236,12 +311,26 @@ class EditPost(BlogHandler):
         if self.user:
             if self.user.is_post_owner(post_id):
                 if error:
-                    self.render("editpost.html", subject=subject, content=content, id=post_id, error=error, pagetitle="Edit Post")
+                    self.render("editpost.html",
+                                subject = subject,
+                                content = content,
+                                id = post_id,
+                                error = error,
+                                pagetitle = "Edit Post")
                 else:
-                     self.render("editpost.html", subject=post.subject, content=post.content, id=post_id, pagetitle="Edit Post")
+                     self.render("editpost.html",
+                                subject = post.subject,
+                                content = post.content,
+                                id = post_id,
+                                pagetitle = "Edit Post")
             else:
                 error = "You can only edit your posts."
-                self.render("editpost.html", subject=post.subject, content=post.content, id=post_id, error=error, pagetitle="Edit Post")
+                self.render("editpost.html",
+                    subject = post.subject,
+                    content = post.content,
+                    id = post_id,
+                    error = error,
+                    pagetitle = "Edit Post")
         else:
             self.redirect('/login')
 
@@ -260,10 +349,16 @@ class EditPost(BlogHandler):
             self.redirect('/blog/%s' % str(post.key().id()))
         else:
             error = "subject and content must be filled, please!"
-            self.render("editpost.html", subject=subject, content=content, id=post_id, error=error)
+            self.render("editpost.html",
+                        subject = subject,
+                        content = content,
+                        id = post_id,
+                        error = error)
 
 
 class DeletePost(BlogHandler):
+    # A class that represent a RequestHandler for deleteing a post
+
     def get(self, post_id):
         post = get_post(post_id)
 
@@ -273,11 +368,18 @@ class DeletePost(BlogHandler):
                 self.redirect('/blog')
             else:
                 error = "You can only delete your posts."
-                self.render("editpost.html", subject=post.subject, content=post.content, id=post_id, error=error, pagetitle="Edit Post")
+                self.render("editpost.html",
+                            subject = post.subject,
+                            content = post.content,
+                            id = post_id,
+                            error = error,
+                            pagetitle = "Edit Post")
         else:
             self.redirect('/login')
 
 class EditComment(BlogHandler):
+    # A class that represent a RequestHandler for the edit comment page
+
     def get(self, comment_id):
         comment = get_comment(comment_id)
 
@@ -287,12 +389,26 @@ class EditComment(BlogHandler):
         if self.user:
             if self.user.is_comment_owner(comment_id):
                 if error:
-                    self.render('editcomment.html', content=content, id=comment_id, error=error, post_id=comment.post_id, pagetitle="Edit Comment")
+                    self.render('editcomment.html',
+                                content = content,
+                                id = comment_id,
+                                error = error,
+                                post_id = comment.post_id,
+                                pagetitle = "Edit Comment")
                 else:
-                    self.render('editcomment.html', content=comment.content, id=comment_id, post_id=comment.post_id, pagetitle="Edit Comment")
+                    self.render('editcomment.html',
+                                content = comment.content,
+                                id = comment_id,
+                                post_id = comment.post_id,
+                                pagetitle = "Edit Comment")
             else:
                 error = "You can only edit your comments."
-                self.render('editcomment.html', content=comment.content, id=comment_id, error=error, post_id=comment.post_id, pagetitle="Edit Comment")
+                self.render('editcomment.html',
+                            content = comment.content,
+                            id = comment_id,
+                            error = error,
+                            post_id = comment.post_id,
+                            pagetitle = "Edit Comment")
         else:
             self.redirect('/login')
 
@@ -309,9 +425,14 @@ class EditComment(BlogHandler):
             self.redirect('/blog/%s' % str(comment.post_id))
         else:
             error = "content must be filled, please!"
-            self.render('editcomment.html', content=content, id=comment_id, error=error)
+            self.render('editcomment.html',
+                        content = content,
+                        id = comment_id,
+                        error = error)
 
 class DeleteComment(BlogHandler):
+    # A class that represent a RequestHandler for deleting a comment
+
     def get(self, comment_id):
         comment = get_comment(comment_id)
 
@@ -321,13 +442,19 @@ class DeleteComment(BlogHandler):
                 self.redirect('/blog/%s' % comment.post_id)
             else:
                 error = "You can only delete your comments."
-                self.render("editcomment.html", content=comment.content, id=comment_id, error=error)
+                self.render("editcomment.html",
+                            content = comment.content,
+                            id = comment_id,
+                            error = error)
         else:
             self.redirect('/login')
 
 class LikePost(BlogHandler):
+    # A class that represent a RequestHandler to like a post
+
     def get(self, post_id):
         post = get_post(post_id)
+
         if self.user:
             user_id = self.user.key().id()
 
@@ -335,11 +462,13 @@ class LikePost(BlogHandler):
                 error = "You can not like your own post."
                 self.render("likepost.html", error=error)
             else:
-                like = db.GqlQuery("SELECT * FROM Like WHERE post_id = %s AND user_id = %s" % (post_id, user_id)).get()
+                like = db.GqlQuery("SELECT * FROM Like WHERE"
+                                    " post_id = %s AND user_id = %s"
+                                    % (post_id, user_id)).get()
                 if like:
                     self.redirect('/blog')
                 else:
-                    l = Like(parent=blog_key(), post_id=int(post_id), user_id=int(user_id))
+                    l = Like(parent=blog_key(), post_id = int(post_id), user_id = int(user_id))
                     l.put()
                     time.sleep(1)
                     self.redirect('/blog')
@@ -359,6 +488,8 @@ def valid_email(email):
     return not email or EMAIL_RE.match(email)
 
 class Signup(BlogHandler):
+    # A class that represent a RequestHandler for signup page
+
     def get(self):
         self.render("signup-form.html", pagetitle="Signup")
 
@@ -392,24 +523,23 @@ class Signup(BlogHandler):
         else:
             self.done()
 
-    def done(self, *a, **kw):
-        raise NotImplementedError
-
-class Register(Signup):
     def done(self):
-        #make sure the user doesn't already exist
-        u = User.by_name(self.username)
-        if u:
-            msg = 'That user already exists.'
-            self.render('signup-form.html', error_username = msg, pagetitle="Signup")
-        else:
-            u = User.register(self.username, self.password, self.email)
-            u.put()
+            #make sure the user doesn't already exist
+            u = User.by_name(self.username)
+            if u:
+                msg = 'That user already exists.'
+                self.render('signup-form.html', error_username = msg, pagetitle = "Signup")
+            else:
+                u = User.register(self.username, self.password, self.email)
+                u.put()
 
-            self.login(u)
-            self.redirect('/welcome')
+                self.login(u)
+                self.redirect('/welcome')
+
 
 class Login(BlogHandler):
+    # A class that represent a RequestHandler for login page
+
     def get(self):
         self.render('login-form.html', pagetitle="Login")
 
@@ -426,14 +556,18 @@ class Login(BlogHandler):
             self.render('login-form.html', error = msg)
 
 class Logout(BlogHandler):
+    # A class that represent a RequestHandler for login out a user
+
     def get(self):
         self.logout()
         self.redirect('/blog')
 
 class Welcome(BlogHandler):
+    # A class that represent a RequestHandler for welcome page
+
     def get(self):
         if self.user:
-            self.render('welcome.html', username=self.user.name, pagetitle="Welcome")
+            self.render('welcome.html', username = self.user.name, pagetitle = "Welcome")
         else:
             self.redirect('/signup')
 
@@ -447,7 +581,7 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/blog/editcomment/([0-9]+)', EditComment),
                                ('/blog/deletecomment/([0-9]+)', DeleteComment),
                                ('/welcome', Welcome),
-                               ('/signup', Register),
+                               ('/signup', Signup),
                                ('/login', Login),
                                ('/logout', Logout),
                                ], debug=True)

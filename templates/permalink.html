@@ -1,5 +1,76 @@
 {% extends "base.html" %}
 
 {% block content %}
-  {{post.render() | safe}}
+    <div class="post">
+        <div class="post-heading">
+            <div class="post-title">
+                {{post.subject}}
+            </div>
+
+            <div class="post-date">
+                {{post.created.strftime("%b %d, %Y")}}
+            </div>
+
+            <div class="post-edit">
+                {% if user %}
+                    <a class="post-link" href="/blog/editpost/{{post.key().id()}}">edit</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="post-content">
+            {{post.content | replace('\n', '<br>') | safe }}
+        </div>
+
+        <div class="post-delete">
+            {% if user %}
+                <a class="post-link" href="/blog/deletepost/{{post.key().id()}}">delete</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="comments-container">
+        {% if user %}
+            <div class="post-comment">
+                <form method="post">
+                        <label>
+                            <div>comment</div>
+                            <textarea name="content"></textarea>
+                        </label>
+
+                        <input type="hidden" name="post_id" value="{{post.key().id()}}">
+
+                        <div class="error">{{error}}</div>
+
+                        <input type="submit">
+                </form>
+            </div>
+        {% endif %}
+        <div class="comments">
+            <ul class="comment-list">
+                {% for c in comments %}
+                    <li class="comment">
+                        <div class="comment-owner">
+                            {{c.get_owner_name(c.key().id())}}
+                        </div>
+
+                        <div class="comment-date">
+                            {{c.created.strftime("%b %d, %Y")}}
+                        </div>
+
+                        <div class="comment-content">
+                            {{c.content}}
+                        </div>
+
+                        <div class="comment-edit">
+                            <a class="post-link" href="/blog/editcomment/{{c.key().id()}}">edit</a>
+                        </div>
+
+                        <div class="comment-delete">
+                            <a class="post-link" href="/blog/deletecomment/{{c.key().id()}}">delete</a>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
 {% endblock %}

@@ -3,6 +3,7 @@ import re
 import random
 import hashlib
 import hmac
+import time
 from string import letters
 
 import webapp2
@@ -86,6 +87,18 @@ def valid_pw(name, password, h):
 def users_key(group = 'default'):
     return db.Key.from_path('users', group)
 
+def get_post(post_id):
+    key = db.Key.from_path('Post', int(post_id), parent=blog_key())
+    post = db.get(key)
+    if post:
+        return post
+
+def get_comment(comment_id):
+    key = db.Key.from_path('Comment', int(comment_id), parent=blog_key())
+    comment = db.get(key)
+    if comment:
+        return comment
+
 class User(db.Model):
     name = db.StringProperty(required = True)
     pw_hash = db.StringProperty(required = True)
@@ -114,6 +127,17 @@ class User(db.Model):
         if u and valid_pw(name, pw, u.pw_hash):
             return u
 
+    def is_post_owner(self, post_id):
+        post = get_post(post_id)
+        if post.owner_id == self.key().id():
+            return True
+
+    def is_comment_owner(self, comment_id):
+        comment = get_comment(comment_id)
+        if comment.owner_id == self.key().id():
+            return True
+
+
 ##### blog stuff
 def blog_key(name = 'default'):
     return db.Key.from_path('blogs', name)
@@ -121,12 +145,23 @@ def blog_key(name = 'default'):
 class Post(db.Model):
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
+    owner_id = db.IntegerProperty()
+    likes = db.IntegerProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
 
-    def render(self):
-        self._render_text = self.content.replace('\n', '<br>')
-        return render_str("post.html", p = self)
+class Comment(db.Model):
+    post_id = db.IntegerProperty(required = True)
+    owner_id = db.IntegerProperty(required = True)
+    content = db.TextProperty(required = True)
+    created = db.DateTimeProperty(auto_now_add = True)
+    last_modified = db.DateTimeProperty(auto_now = True)
+
+    def get_owner_name(self, comment_id):
+        comment = get_comment(comment_id)
+        u = User.by_id(comment.owner_id)
+        if u:
+            return u.name
 
 class BlogFront(BlogHandler):
     def get(self):
@@ -135,14 +170,26 @@ class BlogFront(BlogHandler):
 
 class PostPage(BlogHandler):
     def get(self, post_id):
-        key = db.Key.from_path('Post', int(post_id), parent=blog_key())
-        post = db.get(key)
+        post = get_post(post_id)
+        comments = greetings = db.GqlQuery("SELECT * FROM Comment WHERE post_id = %s ORDER BY created DESC" % post_id)
 
         if not post:
             self.error(404)
             return
 
-        self.render("permalink.html", post = post)
+        self.render("permalink.html", post = post, comments = comments)
+
+    def post(self, post_id):
+        content = self.request.get('content')
+
+        post = get_post(post_id)
+
+        if content and post_id:
+            c = Comment(parent = blog_key(), post_id = int(post_id), owner_id = self.user.key().id(), content = content)
+            c.put()
+            self.redirect('/blog/%s' % str(post_id))
+        else:
+            self.render("permalink.html", post = post)
 
 class NewPost(BlogHandler):
     def get(self):
@@ -157,14 +204,132 @@ class NewPost(BlogHandler):
 
         subject = self.request.get('subject')
         content = self.request.get('content')
+        user_id = self.user.key().id()
 
-        if subject and content:
-            p = Post(parent = blog_key(), subject = subject, content = content)
+        if subject and content and user_id:
+            p = Post(parent = blog_key(), subject = subject, content = content, owner_id = user_id, likes = 0)
             p.put()
             self.redirect('/blog/%s' % str(p.key().id()))
         else:
             error = "subject and content, please!"
             self.render("newpost.html", subject=subject, content=content, error=error)
+
+class EditPost(BlogHandler):
+    def get(self, post_id):
+        post = get_post(post_id)
+
+        subject = self.request.get('subject')
+        content = self.request.get('content')
+        error = self.request.get('error')
+
+        if self.user:
+            if self.user.is_post_owner(post_id):
+                if error:
+                    self.render("editpost.html", subject=subject, content=content, id=post_id, error=error)
+                else:
+                     self.render("editpost.html", subject=post.subject, content=post.content, id=post_id)
+            else:
+                error = "You can only edit your posts."
+                self.render("editpost.html", subject=post.subject, content=post.content, id=post_id, error=error)
+        else:
+            self.redirect('/login')
+
+    def post(self, post_id):
+        if not self.user:
+            self.redirect('/blog')
+
+        subject = self.request.get('subject')
+        content = self.request.get('content')
+
+        if subject and content:
+            post = get_post(post_id)
+            post.subject = subject
+            post.content = content
+            post.put()
+            self.redirect('/blog/%s' % str(post.key().id()))
+        else:
+            error = "subject and content must be filled, please!"
+            self.render("editpost.html", subject=subject, content=content, id=post_id, error=error)
+
+
+class DeletePost(BlogHandler):
+    def get(self, post_id):
+        post = get_post(post_id)
+
+        if self.user:
+            if self.user.is_post_owner(post_id):
+                post.delete()
+                self.redirect('/blog')
+            else:
+                error = "You can only delete your posts."
+                self.render("editpost.html", subject=post.subject, content=post.content, id=post_id, error=error)
+        else:
+            self.redirect('/login')
+
+class EditComment(BlogHandler):
+    def get(self, comment_id):
+        comment = get_comment(comment_id)
+
+        content = self.request.get('content')
+        error = self.request.get('error')
+
+        if self.user:
+            if self.user.is_comment_owner(comment_id):
+                if error:
+                    self.render('editcomment.html', content=content, id=comment_id, error=error)
+                else:
+                    self.render('editcomment.html', content=comment.content, id=comment_id)
+            else:
+                error = "You can only edit your comments."
+                self.render('editcomment.html', content=comment.content, id=comment_id, error=error)
+        else:
+            self.redirect('/login')
+
+    def post(self, comment_id):
+        if not self.user:
+            self.redirect('/blog')
+
+        content = self.request.get('content')
+
+        if content:
+            comment = get_comment(comment_id)
+            comment.content = content
+            comment.put()
+            self.redirect('/blog/%s' % str(comment.post_id))
+        else:
+            error = "content must be filled, please!"
+            self.render('editcomment.html', content=content, id=comment_id, error=error)
+
+class DeleteComment(BlogHandler):
+    def get(self, comment_id):
+        comment = get_comment(comment_id)
+
+        if self.user:
+            if self.user.is_comment_owner(comment_id):
+                comment.delete()
+                self.redirect('/blog/%s' % comment.post_id)
+            else:
+                error = "You can only delete your comments."
+                self.render("editcomment.html", content=comment.content, id=comment_id, error=error)
+        else:
+            self.redirect('/login')
+
+class LikePost(BlogHandler):
+    def get(self, post_id):
+        post = get_post(post_id)
+        if self.user:
+            if self.user.is_post_owner(post_id):
+                error = "You can not like your own post."
+                self.render("likepost.html", error=error)
+            else:
+                likes = post.likes
+                likes += 1
+                post.likes = likes
+                post.put()
+                time.sleep(1)
+                self.redirect('/blog')
+        else:
+            self.redirect('/login')
 
 USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
 def valid_username(username):
@@ -261,6 +426,11 @@ app = webapp2.WSGIApplication([('/', MainPage),
                                ('/blog/?', BlogFront),
                                ('/blog/([0-9]+)', PostPage),
                                ('/blog/newpost', NewPost),
+                               ('/blog/editpost/([0-9]+)', EditPost),
+                               ('/blog/deletepost/([0-9]+)', DeletePost),
+                               ('/blog/likepost/([0-9]+)', LikePost),
+                               ('/blog/editcomment/([0-9]+)', EditComment),
+                               ('/blog/deletecomment/([0-9]+)', DeleteComment),
                                ('/welcome', Welcome),
                                ('/signup', Register),
                                ('/login', Login),

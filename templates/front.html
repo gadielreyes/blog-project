@@ -3,7 +3,39 @@
 {% block content %}
 
   {% for p in posts %}
-    {{ p.render() | safe }}
+    <div class="post">
+      <div class="post-heading">
+        <div class="post-title">
+          <a class="post-link" href="/blog/{{p.key().id()}}">{{p.subject}}</a>
+        </div>
+
+        <div class="post-date">
+          {{p.created.strftime("%b %d, %Y")}}
+        </div>
+
+        <div class="post-edit">
+            {% if user %}
+                <a class="post-link" href="/blog/editpost/{{p.key().id()}}">edit</a>
+            {% endif %}
+        </div>
+      </div>
+
+      <div class="post-content">
+        {{p.content | replace('\n', '<br>') | safe }}
+      </div>
+
+      <div class="post-delete">
+        {% if user %}
+            <a class="post-link" href="/blog/deletepost/{{p.key().id()}}">delete</a>
+        {% endif %}
+      </div>
+
+      <div class="post-like">
+          {% if user %}
+            <span class="post-likes">{{p.likes}}</span><a class="post-link" href="/blog/likepost/{{p.key().id()}}">like</a>
+          {% endif %}
+      </div>
+    </div>
     <br><br>
   {% endfor %}
 

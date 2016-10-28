@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h2>edit comment</h2>
+
+    <form method="post">
+      <label>
+        <div>blog</div>
+        <textarea name="content">{{content}}</textarea>
+      </label>
+
+      <div class="error">{{error}}</div>
+
+      {% if user.is_comment_owner(id) %}
+        <input type="submit">
+      {% endif %}
+    </form>
+{% endblock %}

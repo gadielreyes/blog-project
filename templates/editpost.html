@@ -6,7 +6,7 @@
     <form method="post">
       <label>
         <div>subject</div>
-        <input type="text" name="subject" value="{{subject}}">
+        <input class="input-text" type="text" name="subject" value="{{subject}}">
       </label>
 
       <label>
@@ -17,6 +17,7 @@
       <div class="error">{{error}}</div>
 
       {% if user.is_post_owner(id) %}
+        <a class="button-cancel" href="/blog/{{id}}">cancel</a>
         <input type="submit">
       {% endif %}
     </form>

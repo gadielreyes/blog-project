@@ -146,9 +146,15 @@ class Post(db.Model):
     subject = db.StringProperty(required = True)
     content = db.TextProperty(required = True)
     owner_id = db.IntegerProperty()
-    likes = db.IntegerProperty(required = True)
     created = db.DateTimeProperty(auto_now_add = True)
     last_modified = db.DateTimeProperty(auto_now = True)
+
+    def get_likes(self):
+        likes = db.GqlQuery("SELECT * FROM Like WHERE post_id = %s" % self.key().id())
+        if likes:
+            return likes.count(100000000)
+        else:
+            return 0
 
 class Comment(db.Model):
     post_id = db.IntegerProperty(required = True)
@@ -163,10 +169,15 @@ class Comment(db.Model):
         if u:
             return u.name
 
+class Like(db.Model):
+    post_id = db.IntegerProperty(required = True)
+    user_id = db.IntegerProperty(required = True)
+    liked_on = db.DateTimeProperty(auto_now_add = True)
+
 class BlogFront(BlogHandler):
     def get(self):
         posts = greetings = Post.all().order('-created')
-        self.render('front.html', posts = posts)
+        self.render('front.html', posts = posts, pagetitle="Blog")
 
 class PostPage(BlogHandler):
     def get(self, post_id):
@@ -177,7 +188,7 @@ class PostPage(BlogHandler):
             self.error(404)
             return
 
-        self.render("permalink.html", post = post, comments = comments)
+        self.render("permalink.html", post = post, comments = comments, pagetitle="Post Page")
 
     def post(self, post_id):
         content = self.request.get('content')
@@ -194,7 +205,7 @@ class PostPage(BlogHandler):
 class NewPost(BlogHandler):
     def get(self):
         if self.user:
-            self.render("newpost.html")
+            self.render("newpost.html", pagetitle="New Post")
         else:
             self.redirect("/login")
 
@@ -207,7 +218,7 @@ class NewPost(BlogHandler):
         user_id = self.user.key().id()
 
         if subject and content and user_id:
-            p = Post(parent = blog_key(), subject = subject, content = content, owner_id = user_id, likes = 0)
+            p = Post(parent = blog_key(), subject = subject, content = content, owner_id = user_id)
             p.put()
             self.redirect('/blog/%s' % str(p.key().id()))
         else:
@@ -225,12 +236,12 @@ class EditPost(BlogHandler):
         if self.user:
             if self.user.is_post_owner(post_id):
                 if error:
-                    self.render("editpost.html", subject=subject, content=content, id=post_id, error=error)
+                    self.render("editpost.html", subject=subject, content=content, id=post_id, error=error, pagetitle="Edit Post")
                 else:
-                     self.render("editpost.html", subject=post.subject, content=post.content, id=post_id)
+                     self.render("editpost.html", subject=post.subject, content=post.content, id=post_id, pagetitle="Edit Post")
             else:
                 error = "You can only edit your posts."
-                self.render("editpost.html", subject=post.subject, content=post.content, id=post_id, error=error)
+                self.render("editpost.html", subject=post.subject, content=post.content, id=post_id, error=error, pagetitle="Edit Post")
         else:
             self.redirect('/login')
 
@@ -262,7 +273,7 @@ class DeletePost(BlogHandler):
                 self.redirect('/blog')
             else:
                 error = "You can only delete your posts."
-                self.render("editpost.html", subject=post.subject, content=post.content, id=post_id, error=error)
+                self.render("editpost.html", subject=post.subject, content=post.content, id=post_id, error=error, pagetitle="Edit Post")
         else:
             self.redirect('/login')
 
@@ -276,12 +287,12 @@ class EditComment(BlogHandler):
         if self.user:
             if self.user.is_comment_owner(comment_id):
                 if error:
-                    self.render('editcomment.html', content=content, id=comment_id, error=error)
+                    self.render('editcomment.html', content=content, id=comment_id, error=error, post_id=comment.post_id, pagetitle="Edit Comment")
                 else:
-                    self.render('editcomment.html', content=comment.content, id=comment_id)
+                    self.render('editcomment.html', content=comment.content, id=comment_id, post_id=comment.post_id, pagetitle="Edit Comment")
             else:
                 error = "You can only edit your comments."
-                self.render('editcomment.html', content=comment.content, id=comment_id, error=error)
+                self.render('editcomment.html', content=comment.content, id=comment_id, error=error, post_id=comment.post_id, pagetitle="Edit Comment")
         else:
             self.redirect('/login')
 
@@ -318,16 +329,20 @@ class LikePost(BlogHandler):
     def get(self, post_id):
         post = get_post(post_id)
         if self.user:
+            user_id = self.user.key().id()
+
             if self.user.is_post_owner(post_id):
                 error = "You can not like your own post."
                 self.render("likepost.html", error=error)
             else:
-                likes = post.likes
-                likes += 1
-                post.likes = likes
-                post.put()
-                time.sleep(1)
-                self.redirect('/blog')
+                like = db.GqlQuery("SELECT * FROM Like WHERE post_id = %s AND user_id = %s" % (post_id, user_id)).get()
+                if like:
+                    self.redirect('/blog')
+                else:
+                    l = Like(parent=blog_key(), post_id=int(post_id), user_id=int(user_id))
+                    l.put()
+                    time.sleep(1)
+                    self.redirect('/blog')
         else:
             self.redirect('/login')
 
@@ -345,7 +360,7 @@ def valid_email(email):
 
 class Signup(BlogHandler):
     def get(self):
-        self.render("signup-form.html")
+        self.render("signup-form.html", pagetitle="Signup")
 
     def post(self):
         have_error = False
@@ -386,7 +401,7 @@ class Register(Signup):
         u = User.by_name(self.username)
         if u:
             msg = 'That user already exists.'
-            self.render('signup-form.html', error_username = msg)
+            self.render('signup-form.html', error_username = msg, pagetitle="Signup")
         else:
             u = User.register(self.username, self.password, self.email)
             u.put()
@@ -396,7 +411,7 @@ class Register(Signup):
 
 class Login(BlogHandler):
     def get(self):
-        self.render('login-form.html')
+        self.render('login-form.html', pagetitle="Login")
 
     def post(self):
         username = self.request.get('username')
@@ -418,7 +433,7 @@ class Logout(BlogHandler):
 class Welcome(BlogHandler):
     def get(self):
         if self.user:
-            self.render('welcome.html', username = self.user.name)
+            self.render('welcome.html', username=self.user.name, pagetitle="Welcome")
         else:
             self.redirect('/signup')
 

@@ -49,7 +49,7 @@ label + label {
     margin-top: 20px;
 }
 
-input[type=text] {
+.input-text {
     width: 500px;
     font-size: 20px;
     padding: 2px;
@@ -64,7 +64,19 @@ textarea {
 }
 
 input[type=submit] {
-  font-size: 24px;
+  font-size: 20px;
+}
+
+.button-cancel {
+    background-color: buttonface;
+    border: 1px solid #999;
+    border-radius: 2px;
+    color: black;
+    cursor: default;
+    font-size: 20px;
+    padding: 2.5px 10px;
+    text-decoration: none;
+    text-transform: capitalize;
 }
 
 .main-title {

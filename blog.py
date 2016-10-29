@@ -201,7 +201,6 @@ class User(db.Model):
         if comment.owner_id == self.key().id():
             return True
 
-
 ##### blog stuff
 def get_post(post_id):
     """Get a post for a given id
@@ -402,7 +401,6 @@ class EditPost(BlogHandler):
                         id = post_id,
                         error = error)
 
-
 class DeletePost(BlogHandler):
     # A class that represent a RequestHandler for deleteing a post
 
@@ -582,7 +580,6 @@ class Signup(BlogHandler):
 
                 self.login(u)
                 self.redirect('/welcome')
-
 
 class Login(BlogHandler):
     # A class that represent a RequestHandler for login page

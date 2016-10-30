@@ -47,10 +47,10 @@
         {% endif %}
         <div class="comments">
             <ul class="comment-list">
-                {% for c in comments %}
+                {% for c in post.comments %}
                     <li class="comment">
                         <div class="comment-owner">
-                            {{c.get_owner_name(c.key().id())}}
+                            {{c.user.name}}
                         </div>
 
                         <div class="comment-date">

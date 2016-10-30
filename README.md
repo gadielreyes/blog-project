@@ -22,6 +22,31 @@ You'll find the following folder and files
 
 ```
 grblogproject /
+|---- common /
+|     |---- __init__.py
+|     |---- tools.py
+|---- handlers /
+|     |---- __init__.py
+|     |---- blog.py
+|     |---- blogfront.py
+|     |---- deletecomment.py
+|     |---- deletepost.py
+|     |---- editcomment.py
+|     |---- editpost.py
+|     |---- likepost.py
+|     |---- login.py
+|     |---- logout.py
+|     |---- mainpage.py
+|     |---- newpost.py
+|     |---- postpage.py
+|     |---- signup.py
+|     |---- welcome.py
+|---- models /
+|     |---- __init__.py
+|     |---- comment.py
+|     |---- like.py
+|     |---- post.py
+|     |---- user.py
 |---- static /
 |     |---- css /
 |           |---- main.css

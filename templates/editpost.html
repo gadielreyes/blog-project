@@ -16,8 +16,8 @@
 
         <div class="error">{{error}}</div>
 
-        {% if user.is_post_owner(id) %}
-            <a class="button-cancel" href="/blog/{{id}}">cancel</a>
+        {% if post.is_owner(user) %}
+            <a class="button-cancel" href="/blog/{{post.key().id()}}">cancel</a>
             <input type="submit">
         {% endif %}
     </form>

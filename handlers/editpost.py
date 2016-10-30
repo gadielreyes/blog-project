@@ -7,6 +7,10 @@ class EditPost(BlogHandler):
     def get(self, post_id):
         post = Post.get_by_id(post_id)
 
+        if not post:
+            self.error(404)
+            return
+
         subject = self.request.get('subject')
         content = self.request.get('content')
         error = self.request.get('error')
@@ -48,6 +52,10 @@ class EditPost(BlogHandler):
         post = Post.get_by_id(post_id)
         subject = self.request.get('subject')
         content = self.request.get('content')
+
+        if not post:
+            self.error(404)
+            return
 
         if post.user.key().id() != self.user.key().id():
             error = "You can only edit your posts."

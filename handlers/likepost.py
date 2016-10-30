@@ -11,6 +11,10 @@ class LikePost(BlogHandler):
     def get(self, post_id):
         post = Post.get_by_id(post_id)
 
+        if not post:
+            self.error(404)
+            return
+
         if self.user:
             if post.is_owner(self.user):
                 error = "You can not like your own post."

@@ -20,6 +20,10 @@ class PostPage(BlogHandler):
     def post(self, post_id):
         post = Post.get_by_id(post_id)
 
+        if not post:
+            self.error(404)
+            return
+
         content = self.request.get('content')
 
         if content and post_id:

@@ -7,6 +7,10 @@ class EditComment(BlogHandler):
     def get(self, comment_id):
         comment = Comment.get_by_id(comment_id)
 
+        if not comment:
+            self.error(404)
+            return
+
         content = self.request.get('content')
         error = self.request.get('error')
 
@@ -43,6 +47,10 @@ class EditComment(BlogHandler):
 
         comment = Comment.get_by_id(comment_id)
         content = self.request.get('content')
+
+        if not comment:
+            self.error(404)
+            return
 
         if comment.user.key().id() != self.user.key().id():
             self.render("login-form.html",
